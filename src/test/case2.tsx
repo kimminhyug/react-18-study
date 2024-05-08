@@ -1,56 +1,96 @@
-import React, { useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { flushSync } from 'react-dom';
 
+const fetch = (time = 300) => new Promise((resolve) => setTimeout(resolve, time));
+
 export const CaseAutomaticBatch = (): any => {
+  const divBoxRef = useRef<HTMLDivElement>();
   const [count, setCount] = useState(0);
+
+  const [isLoading, setIsLoading] = useState(false);
   const [syncCount, setSyncCount] = useState(0);
   const handleClick = () => {
-    setCount((prev) => {
-      console.log(count + 1, '1번째');
-      return count + 1;
+    fetch().then(() => {
+      setIsLoading((prev) => !prev);
+      setCount((prev) => {
+        return prev + 1;
+      });
     });
+  };
+  const handleClickTimer = () => {
+    setIsLoading((prev) => !prev);
     setCount((prev) => {
-      console.log(count + 1, '2번째');
-      return count + 1;
+      return prev + 1;
     });
-    //react 18 에서 도입된 autobatching은 이벤트 핸들러 및 promise와 같은 내장 비동기 함수에 대해  자동으로 batch 작업을 수행함
-    //과거에는 위와 같이 호출 하면 2번의 렌더링이 발생 하였지만 react 18에서부터는 한번에 묶어(배치) 처리 하기 떄문에 1번의 렌더링 만이 발생함.
-    //단 현재 스코프 안에서만 배치 처리 되며, 하위 스코프에서 선언된 경우 별도로 배치 처리됨
+  };
+
+  useEffect(() => {
+    if (divBoxRef.current) {
+      const log = document.createElement('span');
+      const utc = new Date().toUTCString();
+      log.innerHTML = `${utc}: re-render`;
+      divBoxRef.current.append(log);
+    } else {
+      alert('divBox Not Found');
+    }
+  });
+
+  const clear = () => {
+    if (divBoxRef.current) {
+      divBoxRef.current.innerHTML = '';
+    } else {
+      alert('divBox Not Found');
+    }
   };
 
   const handleFlushSyncClick = () => {
     // flushSync 란 강제로 DOM RENDERING 비권장 사용 방법
-    flushSync(() => {
-      setSyncCount((prev) => {
-        console.log(syncCount + 1, '1번째');
-        return syncCount + 1;
-      });
-    });
-    flushSync(() => {
-      setSyncCount((prev) => {
-        console.log(syncCount + 1, '2번째');
-        return syncCount + 1;
-      });
-    });
+    // flushSync(() => {
+    //   setSyncCount((prev) => {
+    //     console.log(syncCount + 1, '1번째');
+    //     return syncCount + 1;
+    //   });
+    // });
   };
 
-  useEffect(() => {
-    console.log('count rerender', count);
-  }, [count]);
-
-  useEffect(() => {
-    console.log('syncCount rerender', syncCount);
-  }, [syncCount]);
-
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div>
-        flushSync 적용 전: {count} <input type="button" onClick={handleClick} value="증가" />
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        // color: isLoading ? 'red' : 'green',
+      }}
+    >
+      <h3>Automatic Batching</h3>
+      <h4>https://react.dev/blog/2022/03/29/react-v18#whats-new-in-react-18</h4>
+      <ul>
+        <li>
+          신규 방식
+          <ul>
+            <li>동일한 스코프에서 실행된 setState들은 하나의 리렌더링으로 처리함</li>
+            <li>Auto Batch를 원하지 않을 시, flushSync 함수 사용(공식 문서에서는 비 권장)</li>
+          </ul>
+        </li>
+        <li>
+          이전 방식
+          <ul>
+            <li>
+              React application의 이벤트 핸들러(컴포넌트 내부 함수등)가 아닌 경우는 setState가 사용된 만큼 re-rendering
+              이 발생
+            </li>
+          </ul>
+        </li>
+      </ul>
+
+      <div style={{ display: 'flex', gap: 5 }}>
+        isLoading: {isLoading} count: {count}
+        <input type="button" onClick={handleClick} value="증가(비동기)" />
+        <input type="button" onClick={handleClickTimer} value="증가" />
+        <input type="button" onClick={clear} value="로그 삭제" />
       </div>
-      <div>
-        flushSync 적용 후: {syncCount} <input type="button" onClick={handleFlushSyncClick} value="증가" />
-      </div>
+      <div style={{ display: 'flex', flexDirection: 'column' }} ref={divBoxRef}></div>
     </div>
   );
 };
-// yarn add --dev @types/react
